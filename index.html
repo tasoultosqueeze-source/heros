@@ -2,11 +2,964 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>Hero's Dilemma Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hero's Dilemma: v3.5 Arcade Edition</title>
+    <style>
+        :root {
+            --bg-color: #06080d;
+            --panel-bg: rgba(14, 17, 26, 0.94);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --accent-red: #ff4757;
+            --accent-blue: #70a1ff;
+            --accent-yellow: #ffa502;
+            --accent-green: #2ed573;
+            --accent-purple: #a55eea;
+            --text-primary: #f1f2f6;
+            --text-secondary: #8e9aaf;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(112, 161, 255, 0.05) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(255, 71, 87, 0.05) 0px, transparent 50%);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px 12px;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 620px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header {
+            text-align: center;
+            padding: 4px 0;
+        }
+
+        header h1 {
+            font-size: 1.15rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .sticky-dashboard {
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            background: rgba(10, 12, 18, 0.96);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 10px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hero-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 8px 12px;
+        }
+
+        .pixel-hero-box {
+            width: 58px;
+            height: 58px;
+            background: radial-gradient(circle, rgba(20, 30, 45, 0.8) 0%, rgba(5, 7, 12, 0.95) 100%);
+            border: 1px solid rgba(112, 161, 255, 0.25);
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas#heroCanvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 48px;
+            height: 48px;
+            transform-origin: bottom center;
+        }
+
+        @keyframes metalSlugBreath {
+            0%, 100% { transform: translateY(0) scale(1, 1); }
+            50% { transform: translateY(-2px) scale(1.03, 0.96); }
+        }
+
+        @keyframes metalSlugAttack {
+            0% { transform: translateX(0) scale(1, 1); }
+            20% { transform: translateX(-5px) scale(0.92, 1.08); }
+            50% { transform: translateX(12px) scale(1.12, 0.88); }
+            100% { transform: translateX(0) scale(1, 1); }
+        }
+
+        @keyframes metalSlugDamage {
+            0%, 100% { transform: translateX(0) rotate(0deg); filter: drop-shadow(0 0 0 rgba(255,71,87,0)); }
+            20% { transform: translateX(-6px) rotate(-4deg); filter: drop-shadow(0 0 10px var(--accent-red)); }
+            40% { transform: translateX(6px) rotate(4deg); }
+            60% { transform: translateX(-3px) rotate(-2deg); }
+        }
+
+        .anim-idle { animation: metalSlugBreath 2.2s ease-in-out infinite; }
+        .anim-attack { animation: metalSlugAttack 0.38s cubic-bezier(0.1, 1, 0.3, 1); }
+        .anim-damage { animation: metalSlugDamage 0.42s ease-in-out; }
+
+        .hero-quick-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            text-align: right;
+        }
+
+        .hero-quick-title {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .hero-quick-val {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-yellow);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 6px;
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.58rem;
+            color: var(--text-secondary);
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .status-value {
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: color 0.3s;
+        }
+
+        .npc-strip {
+            display: flex;
+            justify-content: space-around;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            padding: 6px 10px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .npc-badge {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background-color: var(--accent-green);
+        }
+
+        .status-dot.dead {
+            background-color: var(--accent-red);
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .enemy-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .enemy-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .enemy-tag {
+            font-size: 0.68rem;
+            color: var(--accent-blue);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .enemy-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .threat-badge {
+            font-size: 0.68rem;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: rgba(255, 71, 87, 0.12);
+            color: var(--accent-red);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            font-weight: 600;
+        }
+
+        .quote-card {
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 2px solid var(--accent-red);
+            padding: 10px 12px;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: rgba(241, 242, 246, 0.9);
+            margin-bottom: 12px;
+        }
+
+        .meta-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(255, 71, 87, 0.05));
+            border-color: rgba(255, 71, 87, 0.4);
+            color: #ff6b81;
+        }
+
+        .btn-sub {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .casualty-container {
+            max-height: 540px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .casualty-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .casualty-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .casualty-identity-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .casualty-portrait-frame {
+            width: 54px;
+            height: 54px;
+            background: #080a0f;
+            border: 2px solid #2a313d;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.95);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .casualty-portrait-frame canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            width: 50px;
+            height: 50px;
+        }
+
+        .casualty-name {
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .casualty-meta {
+            font-size: 0.73rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .btn-toggle {
+            background: rgba(112, 161, 255, 0.08);
+            border: 1px solid rgba(112, 161, 255, 0.2);
+            color: var(--accent-blue);
+            font-size: 0.75rem;
+            cursor: pointer;
+            padding: 5px 9px;
+            border-radius: 6px;
+        }
+
+        .casualty-body {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        .casualty-body.open {
+            display: block;
+        }
+
+        .story-quote {
+            color: var(--text-primary);
+            font-style: italic;
+            margin-top: 6px;
+            padding: 8px 12px;
+            background: rgba(112, 161, 255, 0.04);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 0 6px 6px 0;
+        }
+
+        .revenge-box {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 71, 87, 0.08);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: #ff6b81;
+        }
+
+        .numbed-mask-badge {
+            color: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 8px;
+            border-radius: 4px;
+            letter-spacing: 2px;
+            font-family: monospace;
+            font-size: 0.75rem;
+        }
+
+        .screen { display: none; }
+        .screen.active { display: block; }
+    </style>
 </head>
-<body style="background:#000; color:#fff; text-align:center; padding-top:50px;">
-    <h1>Hero's Dilemma</h1>
-    <p>System Online: v3.5 Deploy Test OK</p>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Hero's Dilemma</h1>
+            <p>v3.5 Arcade Edition</p>
+        </header>
+
+        <div class="sticky-dashboard">
+            <div class="hero-header-row">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="pixel-hero-box">
+                        <canvas id="heroCanvas" width="48" height="48"></canvas>
+                    </div>
+                    <div>
+                        <div class="status-label">エイジ / 討伐数</div>
+                        <div class="status-value" id="stat-age-kills" style="color: var(--accent-yellow);">25歳 / 0体</div>
+                    </div>
+                </div>
+                <div class="hero-quick-info">
+                    <span class="hero-quick-title">累計収支統計</span>
+                    <span class="hero-quick-val" id="stat-casualties-saved" style="color: var(--text-primary);">救った数: 1,240 | 犠牲者: 18</span>
+                </div>
+            </div>
+
+            <div class="status-grid">
+                <div class="status-card">
+                    <div class="status-label">HP</div>
+                    <div class="status-value" id="stat-hp" style="color: var(--accent-green);">100 / 100</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">ATK</div>
+                    <div class="status-value" id="stat-atk" style="color: var(--accent-blue);">85</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">SAN (精神)</div>
+                    <div class="status-value" id="stat-san" style="color: var(--accent-purple);">100 / 100</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">AWK (覚醒)</div>
+                    <div class="status-value" id="stat-awk" style="color: var(--accent-yellow);">0 / 100</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">信頼度</div>
+                    <div class="status-value" id="stat-trust" style="color: #ff9f43;">50%</div>
+                </div>
+                <div class="status-card">
+                    <div class="status-label">スキル数</div>
+                    <div class="status-value" id="stat-skills" style="color: #fff;">0個</div>
+                </div>
+            </div>
+
+            <div class="npc-strip" id="npc-status"></div>
+        </div>
+
+        <!-- ENCOUNTER SCREEN -->
+        <div id="screen-encounter" class="screen active">
+            <div class="panel">
+                <div class="enemy-header">
+                    <div class="enemy-title-group">
+                        <span class="enemy-tag" id="enc-villain-title">---</span>
+                        <h2 class="enemy-name" id="enc-villain-name">---</h2>
+                    </div>
+                    <span class="threat-badge" id="enc-villain-level">LV.1</span>
+                </div>
+                <div class="quote-card" id="enc-villain-quote">「---」</div>
+                <div class="meta-info">
+                    <div><strong>推定戦闘力:</strong> <span id="enc-villain-power" style="color: var(--accent-red);">---</span></div>
+                    <div><strong>目的:</strong> <span id="enc-villain-goal">---</span></div>
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="chooseToFight()">
+                        ⚔️ 迎撃行動を開始する
+                        <span class="btn-sub">街を守るため正面交戦。ターン制戦闘へ移行。</span>
+                    </button>
+                    <button class="btn" onclick="chooseToIgnore()">
+                        🏃 回避・見送り
+                        <span class="btn-sub">交戦を回避。自己正当化を伴い、拡大被害が発生。</span>
+                    </button>
+                    <button class="btn" style="border-color: var(--accent-purple);" onclick="executeRecovery()">
+                        ☕ 拠点でメンタルケア（精神回復）
+                        <span class="btn-sub">信頼度10%を消費して精神(SAN)を25回復する。</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMBAT SCREEN -->
+        <div id="screen-combat" class="screen">
+            <div class="panel">
+                <div class="enemy-header">
+                    <h3 id="combat-v-name">LV.1 ヴィラン</h3>
+                    <span id="combat-v-hp" style="color: var(--accent-red);">HP: 100 / 100</span>
+                </div>
+                <div id="combat-log" style="font-size: 0.8rem; min-height: 50px; margin-bottom: 12px; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px;">
+                    戦闘開始。行動を選択してください。
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="executeCombatAction('attack')">⚡ ダイレクトストライク (通常攻撃)</button>
+                    <button class="btn" onclick="executeCombatAction('heavy')">🔥 オーバーロード (強撃)</button>
+                    <button class="btn" onclick="executeCombatAction('defend')">🛡️ タクティカルガード (防御)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TACTICS SCREEN -->
+        <div id="screen-tactics" class="screen">
+            <div class="panel">
+                <h3 style="font-size: 1rem; margin-bottom: 8px; color: var(--accent-blue);">最終鎮圧プロトコルの決定</h3>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="resolveBattle('overpower')">
+                        全出力解放 (広域焦土化)
+                        <span class="btn-sub">犠牲者: 甚大(12名) / 自身ダメージ: 小</span>
+                    </button>
+                    <button class="btn" onclick="resolveBattle('suppress')">
+                        精密抑制 (局所防衛)
+                        <span class="btn-sub">犠牲者: 最小化(3名) / 自身ダメージ: 大</span>
+                    </button>
+                    <button class="btn" onclick="resolveBattle('balanced')">
+                        標準即応 (通常迎撃)
+                        <span class="btn-sub">犠牲者: 中規模(6名) / 自身ダメージ: 中</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RESULT SCREEN -->
+        <div id="screen-result" class="screen">
+            <div class="panel" style="margin-bottom: 10px;">
+                <h3 id="result-status" style="font-size: 0.95rem; margin-bottom: 6px;">作戦完了</h3>
+                <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                    損害額: <span id="result-cost" style="color: var(--accent-yellow);">--- 億円</span>
+                </div>
+            </div>
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 0.82rem; font-weight: 600;">特定犠牲者記録アーカイブ (<span id="casualty-displayed">0</span>名)</span>
+                    <button class="btn-toggle" onclick="toggleAllCasualties()">一括開閉</button>
+                </div>
+                <div class="casualty-container" id="micro-logs"></div>
+                <button class="btn btn-primary" style="margin-top: 12px;" onclick="nextEncounter()">次の作戦地域へ移動</button>
+            </div>
+        </div>
+
+        <!-- GAMEOVER SCREEN -->
+        <div id="screen-gameover" class="screen">
+            <div class="panel" style="text-align: center; padding: 24px;">
+                <h2 style="color: var(--accent-red); margin-bottom: 10px;">任務継続不能</h2>
+                <p id="gameover-desc" style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">---</p>
+                <button class="btn btn-primary" onclick="resetGame()">最初から再スタート</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 48x48 HERO SPRITE RENDERER ---
+        const canvas = document.getElementById('heroCanvas');
+        const ctx = canvas.getContext('2d');
+        const P = {
+            ".": null, "K": "#05070a", "D": "#181d26", "M": "#2c3442", "L": "#4a5568",
+            "H": "#8392a5", "R": "#ff2d55", "G": "#ff6b81", "C": "#0e1117",
+            "E": "#1c222e", "B": "#4a3525", "W": "#222730"
+        };
+        const heroSprite48 = [
+            "....................KKKKKKKK....................",
+            "..................KKMMLLLLMMKK..................",
+            ".................KMMLLHHHHLLMMK.................",
+            "................KMMLLHHHHHHLLMMK................",
+            "................KMLLLLLLLLLLLLMK................",
+            "...............KMDDDKKKKKKKKDDDDK...............",
+            "...............KMDKRRRRRRRRRRKDMK...............",
+            "...............KMDKRGGGGGGGGRKDMK...............",
+            "...............KMDKRRRRRRRRRRKDMK...............",
+            "...............KMDDDKKKKKKKKDDDDK...............",
+            "................KMDDDDDDDDDDDDMK................",
+            ".................KKMDDDDDDDDDKK.................",
+            "............KKKKK..KKKKKKKKKK..KKKKK............",
+            "..........KKCCCCCKKMMLLLLLLMMKKCCCCCEK..........",
+            ".........KCCCCCCCKMMLLHHHHLLMMKCCCCCEEK.........",
+            "........KCCCCCCCCKMLHHHHHHHHLLKCCCCCCEEK........",
+            "........KCCCCCCCKMDLHHHHHHHHLLDMKCCCCCEEK.......",
+            ".......KCCCCCCKMMDDLLLLLLLLLLDDMMKCCCCCEEK......",
+            ".......KCCCCKMMDDDDDDDDDDDDDDDDDDMMKCCCEEK......",
+            ".......KCCCKMDDDDKKKKKKKKKKKKKKDDDMMKCCCEK......",
+            ".......KCCKMDDDDDKWWWWWWWWWWWWKDDDMMKCCCEK......",
+            ".......KCKMDDDDDDKWWLLLLLLLLWWKDDDMMKCCCCK......",
+            ".......KKMDDDDDDDKWWLHHHHHHLLWKDDDMMKCCCCK......",
+            ".......KMDDDDDDDDKWWLHHHHHHLLWKDDDMMKCCCCK......",
+            ".......KMDDDDDDDDDKWWWWWWWWWWKDDDDMMKCCCCK......",
+            ".......KMDDDDDDDDDDKKKKKKKKKKDDDDDMMKCCCCK......",
+            ".......KMDDDDDBBBBBBBBBBBBBBBBDDDDMMKCCCCK......",
+            ".......KMDDDDDDDDDKKKKKKKKKKKKKKDDDDMMKCCCCK....",
+            ".......KMMDDDDDDDDDDDDDDDDDDDDDDDDMMKCCCCK......",
+            "........KMMDDDDDDDDDDDDDDDDDDDDDDMMKCCCCEK......",
+            ".........KKMMDDDDDDDDDDDDDDDDDDMMKKCCCCCEK......",
+            "...........KKKKKKKKKKKKKKKKKKKKK..KCCCCCEK......",
+            "..............KMMDDDDDDDDMMK.......KCCCCCEK.....",
+            ".............KMMLLLLLLLLLLMMK......KCCCCEEK.....",
+            "............KMLLHHHHHHHHHHLLMK......KCCCCEK.....",
+            "............KMDDDDDDDDDDDDDDMK......KCCCCEK.....",
+            "............KMDDDDKKKKKKKDDDMK.......KCCEK......",
+            "............KMDDDK.......KDDMK.......KCCEK......",
+            "............KMDDDK.......KDDMK........KCK.......",
+            "...........KMMDDDK.......KDDMMK.................",
+            "..........KLLMDDDK.......KDDMLLK................",
+            ".........KHHLLDDDK.......KDDLLHHK...............",
+            ".........KKKKKKKKK.......KKKKKKKK..............."
+        ];
+
+        function renderHeroPixelSprite() {
+            ctx.clearRect(0, 0, 48, 48);
+            for (let y = 0; y < heroSprite48.length; y++) {
+                const row = heroSprite48[y];
+                for (let x = 0; x < 48; x++) {
+                    const char = row[x];
+                    if (char && P[char]) {
+                        ctx.fillStyle = P[char];
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+        }
+        renderHeroPixelSprite();
+        canvas.classList.add('anim-idle');
+
+        // --- 48x48 CITIZEN PORTRAITS ---
+        const ARCADE_PORTRAITS = {
+            yuki: {
+                render: function(ctx) {
+                    ctx.fillStyle = "#161b24"; ctx.fillRect(0, 0, 48, 48);
+                    // Umbrella
+                    ctx.fillStyle = "#c0392b"; ctx.beginPath(); ctx.arc(14, 10, 20, Math.PI, 0, false); ctx.fill();
+                    ctx.fillStyle = "#e74c3c"; ctx.fillRect(8, 2, 10, 3);
+                    ctx.fillStyle = "#1e272e"; ctx.fillRect(22, 12, 2, 24);
+                    // Hood & Face
+                    ctx.fillStyle = "#f1c40f"; ctx.beginPath(); ctx.arc(24, 25, 12, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#fcd5ce"; ctx.beginPath(); ctx.arc(24, 26, 7, 0, Math.PI * 2); ctx.fill();
+                    // Hair & Eyes
+                    ctx.fillStyle = "#3a2012"; ctx.fillRect(19, 20, 10, 4);
+                    ctx.fillStyle = "#1e1e1e"; ctx.fillRect(21, 25, 2, 3); ctx.fillRect(26, 25, 2, 3);
+                    ctx.fillStyle = "#ffffff"; ctx.fillRect(21, 25, 1, 1); ctx.fillRect(26, 25, 1, 1);
+                    // Tears & Body
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.9)"; ctx.fillRect(21, 29, 1, 2); ctx.fillRect(26, 29, 1, 2);
+                    ctx.fillStyle = "#f1c40f"; ctx.fillRect(14, 38, 20, 10);
+                }
+            },
+            kento: {
+                render: function(ctx) {
+                    ctx.fillStyle = "#13171f"; ctx.fillRect(0, 0, 48, 48);
+                    // Hair & Headphones
+                    ctx.fillStyle = "#1c1b24"; ctx.beginPath(); ctx.arc(24, 21, 12, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = "#bdc3c7"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(24, 20, 13, Math.PI, 0, false); ctx.stroke();
+                    ctx.fillStyle = "#2c3e50"; ctx.fillRect(11, 19, 4, 8); ctx.fillRect(33, 19, 4, 8);
+                    // Face & Eyes
+                    ctx.fillStyle = "#f5cba7"; ctx.fillRect(19, 17, 10, 13);
+                    ctx.fillStyle = "#2c2a38"; ctx.fillRect(17, 14, 14, 6);
+                    ctx.fillStyle = "#957257"; ctx.fillRect(19, 25, 4, 2); ctx.fillRect(25, 25, 4, 2);
+                    ctx.fillStyle = "#0a0a0a"; ctx.fillRect(21, 24, 2, 2); ctx.fillRect(26, 24, 2, 2);
+                    // Uniform
+                    ctx.fillStyle = "#1a2536"; ctx.fillRect(12, 35, 24, 13);
+                    ctx.fillStyle = "#f39c12"; ctx.fillRect(23, 37, 2, 2);
+                }
+            },
+            sae: {
+                render: function(ctx) {
+                    ctx.fillStyle = "#151821"; ctx.fillRect(0, 0, 48, 48);
+                    // Hair & Face
+                    ctx.fillStyle = "#2d1c14"; ctx.beginPath(); ctx.arc(32, 22, 6, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(24, 20, 11, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#fcd5ce"; ctx.fillRect(19, 16, 10, 13);
+                    ctx.fillStyle = "#4a3225"; ctx.fillRect(17, 14, 14, 5);
+                    // Eyes & Lips
+                    ctx.fillStyle = "#1e1e1e"; ctx.fillRect(21, 23, 2, 2); ctx.fillRect(26, 23, 2, 2);
+                    ctx.fillStyle = "#ffffff"; ctx.fillRect(21, 23, 1, 1); ctx.fillRect(26, 23, 1, 1);
+                    ctx.fillStyle = "#e07a5f"; ctx.fillRect(22, 28, 4, 1);
+                    // Nurse Uniform & ID
+                    ctx.fillStyle = "#f8f9fa"; ctx.fillRect(13, 34, 22, 14);
+                    ctx.fillStyle = "#ffffff"; ctx.fillRect(26, 40, 5, 4);
+                    ctx.fillStyle = "#e74c3c"; ctx.fillRect(28, 41, 1, 2); ctx.fillRect(27, 41, 3, 1);
+                }
+            },
+            kenji: {
+                render: function(ctx) {
+                    ctx.fillStyle = "#14171d"; ctx.fillRect(0, 0, 48, 48);
+                    // Head & Face
+                    ctx.fillStyle = "#bdc3c7"; ctx.beginPath(); ctx.arc(24, 19, 11, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#e2b391"; ctx.fillRect(19, 17, 10, 13);
+                    // Glasses & Eyes
+                    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1; ctx.strokeRect(19, 23, 4, 4); ctx.strokeRect(25, 23, 4, 4);
+                    ctx.fillStyle = "#1a1a1a"; ctx.fillRect(20, 24, 2, 2); ctx.fillRect(26, 24, 2, 2);
+                    // Beard & Clothes & Cane
+                    ctx.fillStyle = "#ecf0f1"; ctx.fillRect(20, 28, 8, 6);
+                    ctx.fillStyle = "#6d4c41"; ctx.fillRect(11, 35, 26, 13);
+                    ctx.fillStyle = "#4e342e"; ctx.fillRect(34, 32, 3, 16);
+                }
+            }
+        };
+
+        function renderArcadeCitizenPortrait(canvasEl, spriteKey, isNumb) {
+            const pCtx = canvasEl.getContext('2d');
+            pCtx.clearRect(0, 0, 48, 48);
+            const portrait = ARCADE_PORTRAITS[spriteKey] || ARCADE_PORTRAITS.yuki;
+
+            if (isNumb) {
+                pCtx.fillStyle = "#0c1017"; pCtx.fillRect(0, 0, 48, 48);
+                pCtx.fillStyle = "#182230"; pCtx.beginPath(); pCtx.arc(24, 22, 14, 0, Math.PI * 2); pCtx.fill();
+                pCtx.fillRect(12, 34, 24, 14);
+                for (let i = 0; i < 70; i++) {
+                    pCtx.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.6)";
+                    pCtx.fillRect(Math.floor(Math.random() * 48), Math.floor(Math.random() * 48), 1, 1);
+                }
+                pCtx.fillStyle = "#ff4757"; pCtx.fillRect(6, 20, 36, 7);
+                pCtx.fillStyle = "#ffffff"; pCtx.fillRect(8, 22, 32, 1);
+                return;
+            }
+            portrait.render(pCtx);
+        }
+
+        const fixedArchetypeList = [
+            { spriteKey: "yuki", name: "佐藤 ユキ (YUKI)", age: 8, gender: "female", job: "小学生", cause: "避難所へ向かう途上での瓦礫崩落および熱波による全身重傷", story: "お母さんに買ってもらった赤い傘と黄色い合羽を胸に抱きしめ、頬に涙を流したまま動かなくなっていた。" },
+            { spriteKey: "kento", name: "伊藤 ケント (KENTO)", age: 17, gender: "male", job: "高校生", cause: "ビル外壁崩落に伴う落下衝撃および圧迫死", story: "大型ヘッドホンからかすかに音楽が漏れ続けており、模試の参考書が焦げたアスファルトに散らばっていた。" },
+            { spriteKey: "sae", name: "中村 サエ (SAE)", age: 28, gender: "female", job: "看護師", cause: "負傷者の搬送誘導中に発生した毒素ガス急性吸引", story: "名札を胸につけたまま倒れ、最期まで手元に残されていた止血帯を握りしめていた。" },
+            { spriteKey: "kenji", name: "高橋 ケンジ (KENJI)", age: 72, gender: "male", job: "元食堂店主", cause: "切断ケーブルによる二次火災および熱波ショック", story: "両手で杖を強く支え、足の不自由な妻をかばうように瓦礫の前でうずくまっていた。" }
+        ];
+
+        function generateCasualty(id) {
+            const base = fixedArchetypeList[(id - 1) % fixedArchetypeList.length];
+            return { id, spriteKey: base.spriteKey, name: base.name, age: base.age, gender: base.gender, job: base.job, cause: base.cause, story: base.story, opened: false, isRevenge: Math.random() < 0.2, defeated: false };
+        }
+
+        const villainDatabase = [
+            { id: 1, name: "ヴォルテクス", title: "街頭の火炎魔", level: 1, goal: "製薬会社ビルとその周辺区画の焼却", quote: "娘が冷たい病室で一人で冷たくなった夜よりは、ずっとマシなんだよ！！" },
+            { id: 2, name: "ヴァイパー", title: "毒素注入者", level: 1, goal: "生体エネルギーの中和による激痛緩和", quote: "頼む、近づかないでくれ……息をするだけで骨が千切れる！" }
+        ];
+
+        let hero = { age: 25, kills: 0, hp: 100, maxHp: 100, atk: 85, san: 100, maxSan: 100, awk: 0, trust: 50, skills: [], totalSaved: 1240, totalCasualties: 18 };
+        let fixedNPCs = [{ id: "npc1", name: "シド", role: "メカニック", alive: true }, { id: "npc2", name: "マリア", role: "カフェ店主", alive: true }];
+        let currentVillain = null;
+        let combatHp = 100;
+        let casualtyRecords = [];
+        let allOpen = false;
+        let currentCasualtyCount = 4;
+
+        function updateStats() {
+            document.getElementById('stat-age-kills').textContent = `${hero.age}歳 / ${hero.kills}体`;
+            document.getElementById('stat-hp').textContent = `${hero.hp} / ${hero.maxHp}`;
+            document.getElementById('stat-atk').textContent = `${hero.atk}`;
+            document.getElementById('stat-san').textContent = `${hero.san} / ${hero.maxSan}`;
+            document.getElementById('stat-awk').textContent = `${hero.awk} / 100`;
+            document.getElementById('stat-trust').textContent = `${hero.trust}%`;
+            document.getElementById('stat-skills').textContent = `${hero.skills.length}個`;
+            document.getElementById('stat-casualties-saved').textContent = `救った数: ${hero.totalSaved.toLocaleString()} | 犠牲者: ${hero.totalCasualties}`;
+
+            document.getElementById('npc-status').innerHTML = fixedNPCs.map(n => `
+                <div class="npc-badge"><span class="status-dot ${n.alive ? '' : 'dead'}"></span>${n.name} (${n.role})</div>
+            `).join('');
+
+            if (hero.san <= 0) {
+                showScreen('screen-gameover');
+                document.getElementById('gameover-desc').textContent = "精神健康状態(SAN)が0に達し、心の崩壊に伴い活動継続が不能となりました。";
+            }
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function nextEncounter() {
+            currentVillain = villainDatabase[Math.floor(Math.random() * villainDatabase.length)];
+            document.getElementById('enc-villain-title').textContent = currentVillain.title;
+            document.getElementById('enc-villain-name').textContent = currentVillain.name;
+            document.getElementById('enc-villain-quote').textContent = `「${currentVillain.quote}」`;
+            document.getElementById('enc-villain-goal').textContent = currentVillain.goal;
+            document.getElementById('enc-villain-power').textContent = `${currentVillain.level * 35 + 50}`;
+            showScreen('screen-encounter');
+        }
+
+        function chooseToIgnore() {
+            hero.san -= 8;
+            hero.trust -= 10;
+            hero.totalCasualties += 8;
+            currentCasualtyCount = 8;
+            updateStats();
+            renderResult("交戦を回避。野放しとなったヴィランにより甚大な拡大被害が発生しました。");
+        }
+
+        function chooseToFight() {
+            combatHp = 100;
+            document.getElementById('combat-v-name').textContent = `LV.${currentVillain.level} ${currentVillain.name}`;
+            document.getElementById('combat-v-hp').textContent = `HP: ${combatHp} / 100`;
+            showScreen('screen-combat');
+        }
+
+        function executeCombatAction(action) {
+            let dmg = action === 'heavy' ? 45 : (action === 'defend' ? 15 : 30);
+            combatHp = Math.max(0, combatHp - dmg);
+            let recDmg = action === 'defend' ? 4 : 10;
+            hero.hp = Math.max(0, hero.hp - recDmg);
+            updateStats();
+
+            if (combatHp <= 0) {
+                showScreen('screen-tactics');
+            } else {
+                document.getElementById('combat-v-hp').textContent = `HP: ${combatHp}`;
+                document.getElementById('combat-log').textContent = `${dmg} ダメージを与え、${recDmg} 反撃損害を受けました。`;
+            }
+        }
+
+        function executeRecovery() {
+            if (hero.trust < 10) { alert("信頼度が不足しています。"); return; }
+            hero.san = Math.min(hero.maxSan, hero.san + 25);
+            hero.trust -= 10;
+            updateStats();
+            alert("拠点でメンタルケアを受け、SANが25回復しました。（信頼度 -10%）");
+        }
+
+        function resolveBattle(tactic) {
+            hero.kills += 1;
+            hero.age += 1;
+            currentCasualtyCount = tactic === 'overpower' ? 12 : (tactic === 'suppress' ? 3 : 6);
+            hero.san = Math.max(0, hero.san - (tactic === 'overpower' ? 14 : 6));
+            hero.totalCasualties += currentCasualtyCount;
+            hero.totalSaved += 150;
+            updateStats();
+            renderResult(`${currentVillain.name} を鎮圧完了。現場の被害状況を特定記録します。`);
+        }
+
+        function renderResult(msg) {
+            document.getElementById('result-status').textContent = msg;
+            document.getElementById('result-cost').textContent = `${currentVillain ? currentVillain.level * 220 : 180}`;
+            const container = document.getElementById('micro-logs');
+            container.innerHTML = '';
+
+            casualtyRecords = [];
+            for (let i = 1; i <= currentCasualtyCount; i++) {
+                casualtyRecords.push(generateCasualty(i));
+            }
+
+            const displayLimit = Math.min(4, casualtyRecords.length);
+            document.getElementById('casualty-displayed').textContent = displayLimit;
+
+            for (let i = 0; i < displayLimit; i++) {
+                const c = casualtyRecords[i];
+                const card = document.createElement('div');
+                card.className = 'casualty-card';
+                card.id = `casualty-card-${c.id}`;
+                renderCasualtyCardContent(card, c);
+                container.appendChild(card);
+            }
+            showScreen('screen-result');
+        }
+
+        function renderCasualtyCardContent(card, c) {
+            const isNumb = hero.san <= 30;
+            if (isNumb) {
+                card.innerHTML = `
+                    <div class="casualty-header">
+                        <div class="casualty-identity-group">
+                            <div class="casualty-portrait-frame"><canvas id="portrait-canvas-${c.id}" width="48" height="48"></canvas></div>
+                            <div>
+                                <span class="casualty-name">識別番号 #${c.id}: <span class="numbed-mask-badge">UNRECOGNIZED</span></span>
+                                <div class="casualty-meta">生体情報認知遮断プロトコル作動中</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="casualty-body open">
+                        <div style="font-size: 0.78rem; color: rgba(255,255,255,0.3); font-style: italic;">
+                            過負荷防止のため精神保護フィルターが作動中。犠牲者の情報はマスキングされています。
+                        </div>
+                    </div>
+                `;
+            } else {
+                card.innerHTML = `
+                    <div class="casualty-header">
+                        <div class="casualty-identity-group">
+                            <div class="casualty-portrait-frame"><canvas id="portrait-canvas-${c.id}" width="48" height="48"></canvas></div>
+                            <div>
+                                <div class="casualty-name">${c.name}</div>
+                                <div class="casualty-meta">${c.age}歳・${c.job}（${c.gender === 'male' ? '男性' : '女性'}）</div>
+                            </div>
+                        </div>
+                        <button class="btn-toggle" onclick="toggleCasualtyDetail(${c.id})">${c.opened ? '▲ 閉じる' : '▼ 最期を閲覧'}</button>
+                    </div>
+                    <div class="casualty-body ${c.opened ? 'open' : ''}">
+                        <div><strong>死因:</strong> ${c.cause}</div>
+                        <div class="story-quote">「${c.story}」</div>
+                    </div>
+                `;
+            }
+
+            setTimeout(() => {
+                const pCanvas = document.getElementById(`portrait-canvas-${c.id}`);
+                if (pCanvas) renderArcadeCitizenPortrait(pCanvas, c.spriteKey, isNumb);
+            }, 0);
+        }
+
+        function toggleCasualtyDetail(id) {
+            const c = casualtyRecords.find(item => item.id === id);
+            if (!c) return;
+            c.opened = !c.opened;
+            if (c.opened && hero.san > 30) {
+                hero.san = Math.max(0, hero.san - 4);
+                updateStats();
+            }
+            renderCasualtyCardContent(document.getElementById(`casualty-card-${id}`), c);
+        }
+
+        function toggleAllCasualties() {
+            allOpen = !allOpen;
+            const displayLimit = Math.min(4, casualtyRecords.length);
+            for (let i = 0; i < displayLimit; i++) {
+                const c = casualtyRecords[i];
+                c.opened = allOpen;
+                renderCasualtyCardContent(document.getElementById(`casualty-card-${c.id}`), c);
+            }
+        }
+
+        function resetGame() {
+            hero = { age: 25, kills: 0, hp: 100, maxHp: 100, atk: 85, san: 100, maxSan: 100, awk: 0, trust: 50, skills: [], totalSaved: 1240, totalCasualties: 18 };
+            updateStats();
+            nextEncounter();
+        }
+
+        updateStats();
+        nextEncounter();
+    </script>
 </body>
 </html>
-
